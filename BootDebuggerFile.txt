@@ -1,0 +1,813 @@
+1 folder backend
+
+npm init
+
+npm i express mongoose cors body-parser dotenv nodemon
+
+"scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon  index.js"
+  },
+
+npx create-react-app frontend
+
+npm init
+
+npm install react-router-dom
+
+npm install bootstrap@5.3.2
+
+
+add to files in App.js
+import "bootstrap/dist/css/bootstrap.min.css"; 
+import "bootstrap/dist/js/bootstrap.bundle.min";
+
+
+
+.env[backend]
+--------------
+PORT=8080
+DB_URL=mongodb://127.0.0.1:27017/crud-test 
+
+
+index.js[backend]
+-----------------
+const express = require('express');
+const app = express();
+const bodyParser = require("body-parser")
+const dotenv = require('dotenv')
+const mongoose = require('mongoose');
+const User = require('./models/UserModel')
+const cors = require('cors')
+dotenv.config()
+
+const connectDatabase = () => {
+    const dburl = process.env.DB_URL;
+    mongoose.connect(dburl).then(() => {
+        console.log("database connected")
+    }) 
+}
+connectDatabase()
+
+app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: false }))
+app.use(cors())
+
+app.get('/api/v1/users', async (req, res) => { 
+   try {
+        const users = await User.find();
+        res.status(200).json({ status: true, users, message: "Data sent successfully" });
+    } catch (error) {
+        res.status(500).json({ status: false, message: "An error occurred while fetching users", error: error.message });
+    }
+})
+
+app.get('/api/v1/user/:id', async (req, res) => { 
+   
+    try {
+        const users = await User.find({_id:req.params.id});
+        res.status(200).json({ status: true, users, message: "Data sent successfully" });
+    } catch (error) {
+        res.status(500).json({ status: false, message: "An error occurred while fetching users", error: error.message });
+    }
+})
+
+app.post('/api/v1/user', async (req, res) => {
+    try {
+        console.log(req.body);
+        const {email, enrollment, name,  dob, mobile, gender, hobbies } = req.body;
+        const createdUser = await User.create({ enrollment, name, email, dob, mobile, gender, hobbies });
+        res.status(201).json({
+            success: true,
+            user: createdUser,
+            message: "User created successfully"
+        });
+    } catch (error) {
+        res.status(500).json({
+            success: false,
+            message: "Failed to create user",
+            error: error.message
+        });
+    }
+})
+
+
+app.put('/api/v1/user/:id', async (req, res) => {
+
+    try {
+
+        const { enrollment, name, email, dob,mobile,gender,hobbies  } = req.body
+		const updatedUser = await User.findByIdAndUpdate(req.params.id, { enrollment, name, email, dob,mobile,gender,hobbies , upadted: true })
+
+        res.status(201).json({
+            success: true,
+            user: { _id: req.params.id, enrollment, name, email, dob,mobile,gender,hobbies , upadted: true },
+            message: "user Created Successfully"
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(500).json({
+            message: "Something Went wrong",
+            error
+        })
+    }
+
+})
+
+app.delete('/api/v1/user/:id', async (req, res) => {
+    try {
+        console.log(req.params.id)
+        const user = await User.find({_id:req.params.id});
+        if(user.length ===0){
+            throw `User Not found with this id : ${req.params.id}`
+        }
+        console.log(user, 'user.....')
+        await User.deleteOne({ _id: req.params.id })
+        res.status(200).json({
+            success: true,
+            message: "Deleted Successfully"
+        })
+    } catch (error) {
+        console.log(error)
+        res.status(404).json({
+            success: false,
+            message: "Error happened",
+            error: error
+        })
+    }
+})
+app.listen(process.env.PORT, () => console.log(`server is running on port : ${process.env.PORT}`))
+
+
+
+
+create models folder inside backend folder
+-----------------------------------------
+
+
+UserModel.js
+------------
+
+const mongoose = require('mongoose');
+
+const userSchema = mongoose.Schema({
+    enrollment : {
+        type: String,
+        required:[true, "Enrollment is required field"]
+    },
+    name : {
+        type : String, 
+        required: [true, "Name is required field"]
+    },
+    email: {
+        type: String,
+        required: [true, "Email is required"],
+        unique: true
+    },
+    dob : {
+        type: String,
+        required:[true, "DOB is required field"]
+    },
+    mobile : {
+        type: String,
+        required:[true, "Mobile is required field"],
+        max:10,
+        min:10
+    },
+    gender:{
+        type: String,
+        required:[true, "Gender is required field"],
+        enum: {
+            values: [
+                'Male',
+                'Female',
+                'Other',
+                'Not to Say'
+            ],
+            message: 'Please select Gender.'
+        }
+    },
+    hobbies : [{
+        type: String,
+        required:[true, "Hobbies is required field"]
+    }]
+})
+
+module.exports=mongoose.model("User", userSchema)
+
+
+
+--------
+FRONTEND
+--------
+
+App.js
+------
+import { Route,BrowserRouter,Routes } from 'react-router-dom'
+import "bootstrap/dist/css/bootstrap.min.css"; // Bootstrap CSS
+import "bootstrap/dist/js/bootstrap.bundle.min"; // Bootstrap Bundle JS
+import Header from './Component/Header/Header';
+import Home from './Component/Home/Home';
+import AddUser from './Component/AddUser/AddUser';
+import EditUser from './Component/EditUser/EditUser';
+
+function App() {
+  return (
+    <>
+    <BrowserRouter>
+    <Header/>
+      <Routes>
+        <Route path="/"  element={<Home/>}/>
+        <Route path="/add-user"  element={<AddUser/>}/>
+        <Route path="/edit-user/:userId"  element={<EditUser/>}/>
+        {/* <Route path="/test"  element={<h1>Test</h1>}/> */}
+
+      </Routes>
+    </BrowserRouter>
+    </>
+  );
+}
+export default App;
+
+
+Create Component folder inside src folder [src/Component/AddUser/AddUser.js]
+
+AddUser.jsx
+-----------
+
+import React, { useState } from "react"
+import { useNavigate } from "react-router-dom";
+
+
+
+function AddUser() {
+    const [userFormData, setUserFormData] = useState({ hobbies: [] });
+    const [erorMsgData, setErrorMsgData] = useState("")
+    const navigate = useNavigate()
+
+    async function submitHandler(e) {
+        e.preventDefault()
+        try {
+            const response = await fetch("http://localhost:8080/api/v1/user", {
+                method: "post",
+                body: JSON.stringify(userFormData),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            const responsejson = await response.json()
+            if (response.ok) {
+                navigate('/')
+            }else{
+                console.log(responsejson)
+                setErrorMsgData(responsejson?.error)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+
+
+    }
+
+    const formChangeHandler = (event) => {
+
+        if (event.target.type === "checkbox") {
+            if (event.target.checked) {
+                setUserFormData({ ...userFormData, [event.target.name]: [...userFormData.hobbies, event.target.value] })
+            } else {
+                setUserFormData({ ...userFormData, [event.target.name]: userFormData?.hobbies?.filter(it => it !== event.target.value) })
+            }
+        } else {                     
+            setUserFormData({ ...userFormData, [event.target.name]: event.target.value })
+        }
+    }
+    return (
+        <>
+            <div className="container mt-4">
+                <h3>Add Student</h3>
+                <br></br>
+                <p className="text-danger">{erorMsgData}</p>
+                <form onSubmit={submitHandler}>
+                    <div className="mb-3">
+                        <label htmlFor="enrollment" className="form-label">
+                            Enrollment
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="enrollment"
+                            name="enrollment"
+                            onChange={(e) => formChangeHandler(e)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="name" className="form-label">
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="name"
+                            name="name"
+                            onChange={formChangeHandler}
+
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label">
+                            Email
+                        </label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            id="email"
+                            name="email"
+                            onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="dob" className="form-label">
+                            Date of Birth
+                        </label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            id="dob"
+                            name="dob"
+                            onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="mobile" className="form-label">
+                            Mobile
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="mobile"
+                            name="mobile"
+                            onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Gender</label>
+                        <div>
+                            <div className="form-check form-check-inline">
+                                <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="gender"
+                                    id="male"
+                                    value="Male"
+                                    onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="male">
+                                    Male
+                                </label>
+                            </div>
+                            <div className="form-check form-check-inline">
+                                <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="gender"
+                                    id="female"
+                                    value="Female"
+                                    onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="female">
+                                    Female
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Hobbies</label>
+                        <div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="reading"
+                                    name="hobbies"
+                                    value="reading"
+                                    onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="reading">
+                                    Reading
+                                </label>
+                            </div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="travel"
+                                    name="hobbies"
+                                    value="travel"
+                                    onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="travel">
+                                    Travel
+                                </label>
+                            </div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="jumping"
+                                    name="hobbies"
+                                    value="jumping"
+                                    onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="jumping">
+                                    Jumping
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" className="btn btn-primary">
+                        Submit
+                    </button>
+                </form>
+            </div>
+        </>
+    )
+}
+export default AddUser
+
+-----------
+EditUser.jsx
+------------
+
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom"
+
+function EditUser() {
+    const routesData = useParams();
+    const [ediUserData, setEditUserData] = useState({})
+    const [erorMsgData, setErrorMsgData] = useState("")
+    const navigate = useNavigate()
+    console.log(routesData)
+
+    useEffect(() => {
+        async function getUserById() {
+            const res = await fetch(`http://localhost:8080/api/v1/user/${routesData.userId}`);
+            const resData = await res.json();
+            const users = resData.users[0]
+            // console.log(users, 'response')
+            setEditUserData(users)
+        }
+
+        getUserById()
+    }, [])
+
+    
+    async function submitHandler(e) {
+        e.preventDefault()
+        try {
+            const response = await fetch(`http://localhost:8080/api/v1/user/${routesData.userId}`, {
+                method: "put",
+                body: JSON.stringify(ediUserData),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            const responsejson = await response.json()
+            if (response.ok) {
+                alert("Data Updated Successfully!")
+                navigate('/')
+            }else{
+                console.log(responsejson)
+                setErrorMsgData(responsejson?.error)
+            }
+        } catch (error) {
+            console.log(error)
+        }
+
+
+    }
+    const formChangeHandler = (event) => {
+        if (event.target.type === "checkbox") {
+
+            if (event.target.checked) {
+                setEditUserData({ ...ediUserData, [event.target.name]: [...ediUserData.hobbies, event.target.value] })
+            } else {
+                setEditUserData({ ...ediUserData, [event.target.name]: ediUserData?.hobbies?.filter(it => it !== event.target.value) })
+            }
+        } else {                      
+
+            setEditUserData({ ...ediUserData, [event.target.name]: event.target.value })
+        }
+
+    }
+    console.log(erorMsgData)
+    return (
+        <>
+            <div className="container mt-4">
+                <h3>Edit Student</h3>
+                <br></br>
+                {erorMsgData&&<p className="text-danger">{JSON.stringify(erorMsgData)}</p>}
+                <form
+                onSubmit={submitHandler}
+                >
+                    <div className="mb-3">
+                        <label htmlFor="enrollment" className="form-label">
+                            Enrollment
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="enrollment"
+                            name="enrollment"
+                            value={ediUserData?.enrollment}
+                            onChange={(e) => formChangeHandler(e)}
+                            required
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="name" className="form-label">
+                            Name
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="name"
+                            name="name"
+                            value={ediUserData?.name}
+                        onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="email" className="form-label">
+                            Email
+                        </label>
+                        <input
+                            type="email"
+                            className="form-control"
+                            id="email"
+                            name="email"
+                            value={ediUserData?.email}
+                        onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="dob" className="form-label">
+                            Date of Birth
+                        </label>
+                        <input
+                            type="date"
+                            className="form-control"
+                            id="dob"
+                            name="dob"
+                            value={ediUserData?.dob}
+                        onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label htmlFor="mobile" className="form-label">
+                            Mobile
+                        </label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            id="mobile"
+                            name="mobile"
+                            value={ediUserData?.mobile}
+                        onChange={formChangeHandler}
+                        />
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Gender</label>
+                        <div>
+                            <div className="form-check form-check-inline">
+                                <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="gender"
+                                    id="male"
+                                    value="Male"
+                                    checked={ediUserData?.gender === "Male"? true: false}
+                                onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="male">
+                                    Male
+                                </label>
+                            </div>
+                            <div className="form-check form-check-inline">
+                                <input
+                                    className="form-check-input"
+                                    type="radio"
+                                    name="gender"
+                                    id="female"
+                                    value="Female"
+                                    checked={ediUserData?.gender === "Female"? true: false}
+                                onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="female">
+                                    Female
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mb-3">
+                        <label className="form-label">Hobbies</label>
+                        <div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="reading"
+                                    name="hobbies"
+                                    value="reading"
+                                    checked={ediUserData?.hobbies?.findIndex((item)=>item === "reading")>=0? true:false}
+                                onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="reading">
+                                    Reading
+                                </label>
+                            </div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="travel"
+                                    name="hobbies"
+                                    value="travel"
+                                    checked={ediUserData?.hobbies?.findIndex((item)=>item === "travel")>=0? true:false}
+                                onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="travel">
+                                    Travel
+                                </label>
+                            </div>
+                            <div className="form-check">
+                                <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    id="jumping"
+                                    name="hobbies"
+                                    value="jumping"
+                                    checked={ediUserData?.hobbies?.findIndex((item)=>item === "jumping")>=0? true:false}
+                                onChange={formChangeHandler}
+                                />
+                                <label className="form-check-label" htmlFor="jumping">
+                                    Jumping
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" className="btn btn-secondary">
+                        Update
+                    </button>
+                </form>
+            </div>
+        </>
+    )
+}
+export default EditUser
+
+
+----------
+Header.jsx
+----------
+
+import { Link } from "react-router-dom"
+
+function Header() {
+    return (
+        <>
+            <nav className="navbar navbar-expand-lg " style={{ backgroundColor: '#a2e3c4' }}>
+                <div className="container-fluid">
+                    <Link to="/"className="navbar-brand" >Student Information</Link>
+                    <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                        <span className="navbar-toggler-icon"></span>
+                    </button>
+                    <div className="collapse navbar-collapse" id="navbarSupportedContent">
+                        <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+                            <li className="nav-item">
+                                
+                                <Link to="/" className="nav-link active" aria-current="page" >User List</Link>
+                            </li>
+                            <li className="nav-item">
+                                <Link to="/add-user" className="nav-link active" aria-current="page" >Add User</Link>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </>
+    )
+}
+
+export default Header
+
+------------
+UserList.jsx
+------------
+
+import React, { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+
+function UserList() {
+
+    const [userData, setUserData] = useState([])
+const navigate  = useNavigate()
+    useEffect(() => {
+
+        getStudentDetails()
+
+    }, [])
+    console.log(userData, 'userDtaa')
+    const getStudentDetails = async () => {
+        try {
+            const response = await fetch("http://localhost:8080/api/v1/users");
+            const responsejson = await response.json();
+            setUserData(responsejson.users);
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+        }
+    };
+    const deleteUser = async (userId) => {
+    
+        try {
+            // const isConfirmed = confirm("Are you sure want to delete?");
+
+            if(window.confirm("Are you sure want to delete?")){
+                await fetch(`http://localhost:8080/api/v1/user/${userId}`, {
+                    method: 'DELETE'
+                });
+                setUserData(userData.filter(user => user._id !== userId));
+            }
+           
+        } catch (error) {
+            console.error("Error deleting user:", error);
+        }
+    };
+
+   const editHandler = (id) => {
+console.log(id)
+navigate(`/edit-user/${id}`)
+    }
+    return (
+        <>
+            {/* <h3 >Student Details</h3> */}
+            <table className="table table-striped">
+                <thead>
+                    <tr>
+                        <th scope="col">Enrollment No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">DOB</th>
+                        <th scope="col">Mobile</th>
+                        <th scope="col">Gender</th>
+                        <th scope="col">Hobbies</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {
+                        userData.map((item) => (
+                            <tr key={item._id}>
+                                <td>{item.enrollment}</td>
+                                <th>{item.name}</th>
+                                <td>{item.email}</td>
+                                <td>{item.dob}</td>
+                                <td>{item.mobile}</td>
+                                <td>{item.gender}</td>
+                                <td>{item.hobbies.map((hobbie)=>(<span>{hobbie} {" "}</span>))}</td>
+                                <td><button type="button" onClick={()=> editHandler(item._id)} className="btn btn-primary">Edit</button><button type="button" className="btn btn-outline-primary"  onClick={() => deleteUser(item._id)}>Delete</button></td>
+                            </tr>
+                        ))
+                    }
+                </tbody>
+            </table>
+        </>
+    )
+}
+export default UserList
+
+
+--------
+Home.jsx
+--------
+
+import React from "react"
+import UserList from "../UserList/UserList"
+
+function Home(){
+
+    return(
+        <>
+        {/* <h1>Home Component</h1> */}
+
+        <UserList/>
+
+
+        </>
+    )
+}
+export default Home
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
